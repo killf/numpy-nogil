@@ -38,11 +38,15 @@
 
 #define NBUCKETS 1024 /* number of buckets for data*/
 #define NBUCKETS_DIM 16 /* number of buckets for dimensions/strides */
-#define NCACHE 7 /* number of cache entries per bucket */
+#define NCACHE 0 /* number of cache entries per bucket */
 /* this structure fits neatly into a cacheline */
 typedef struct {
     npy_uintp available; /* number of cached pointers */
+#if NCACHE > 0
     void * ptrs[NCACHE];
+#else
+    void * ptrs[1];
+#endif
 } cache_bucket;
 static cache_bucket datacache[NBUCKETS];
 static cache_bucket dimcache[NBUCKETS_DIM];
