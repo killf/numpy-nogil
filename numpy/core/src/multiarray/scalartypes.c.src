@@ -2621,7 +2621,7 @@ static PyBufferProcs gentype_as_buffer = {
     gentype_getcharbuf,                          /* bf_getcharbuffer*/
 #endif
     gentype_getbuffer,                           /* bf_getbuffer */
-    NULL,                                        /* bf_releasebuffer */
+    gentype_releasebuffer,                       /* bf_releasebuffer */
 };
 
 

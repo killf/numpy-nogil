@@ -12,4 +12,7 @@ _descriptor_from_pep3118_format(char *s);
 NPY_NO_EXPORT int
 gentype_getbuffer(PyObject *obj, Py_buffer *view, int flags);
 
+NPY_NO_EXPORT void
+gentype_releasebuffer(PyObject *obj, Py_buffer *view);
+
 #endif
