@@ -28,6 +28,9 @@ typedef struct {
     int nargs;
     int npositional_only;
     int nrequired;
+#ifdef Py_NOGIL
+    _PyOnceFlag once;
+#endif
     /* Null terminated list of keyword argument name strings */
     PyObject *kw_strings[_NPY_MAX_KWARGS+1];
 } _NpyArgParserCache;
