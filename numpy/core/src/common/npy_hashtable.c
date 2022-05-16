@@ -30,8 +30,8 @@
 #endif
 
 #ifdef PY_NOGIL
-#define LOCK_TABLE(tb) _PyMutex_lock(&(tb)->mutex)
-#define UNLOCK_TABLE(tb) _PyMutex_unlock(&(tb)->mutex)
+#define LOCK_TABLE(tb) _PyMutex_lock((_PyMutex*)&(tb)->mutex)
+#define UNLOCK_TABLE(tb) _PyMutex_unlock((_PyMutex*)&(tb)->mutex)
 #else
 #define LOCK_TABLE(tb)
 #define UNLOCK_TABLE(tb)
