@@ -250,6 +250,31 @@ raise_missing_argument(const char *funcname,
 }
 
 
+static int
+begin_initialize_cache(_NpyArgParserCache *cache)
+{
+#ifdef Py_NOGIL
+    return _PyBeginOnce(&cache->once);
+#else
+    return cache->npositional == -1;
+#endif
+}
+
+
+static void
+end_initialize_cache(_NpyArgParserCache *cache, int res)
+{
+#ifdef Py_NOGIL
+    if (res < 0) {
+        _PyEndOnceFailed(&cache->once);
+    }
+    else {
+        _PyEndOnce(&cache->once);
+    }
+#endif
+}
+
+
 /**
  * Generic helper for argument parsing
  *
@@ -272,12 +297,13 @@ _npy_parse_arguments(const char *funcname,
         /* ... is NULL, NULL, NULL terminated: name, converter, value */
         ...)
 {
-    if (NPY_UNLIKELY(cache->npositional == -1)) {
+    if (NPY_UNLIKELY(begin_initialize_cache(cache))) {
         va_list va;
         va_start(va, kwnames);
 
         int res = initialize_keywords(funcname, cache, va);
         va_end(va);
+        end_initialize_cache(cache, res);
         if (res < 0) {
             return -1;
         }
