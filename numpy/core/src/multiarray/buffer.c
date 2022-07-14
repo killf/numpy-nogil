@@ -635,18 +635,42 @@ _buffer_info_free(_buffer_info_t *info)
     free(info);
 }
 
+static PyObject *
+_buffer_init_cache(void)
+{
+    PyObject *cache;
+#ifdef Py_NOGIL
+    cache = _Py_atomic_load_ptr(&_buffer_info_cache);
+#else
+    cache = _buffer_info_cache;
+#endif
+    if (cache == NULL) {
+        cache = PyDict_New();
+        if (cache == NULL) {
+            return NULL;
+        }
+#ifdef Py_NOGIL
+        if (!_Py_atomic_compare_exchange_ptr(&_buffer_info_cache, NULL, cache)) {
+            Py_DECREF(cache);
+            cache = _Py_atomic_load_ptr(&_buffer_info_cache);
+        }
+#else
+        _buffer_info_cache = cache;
+#endif
+    }
+    return cache;
+}
+
 /* Get buffer info from the global dictionary */
 static _buffer_info_t*
 _buffer_get_info(PyObject *obj)
 {
-    PyObject *key = NULL, *item_list = NULL, *item = NULL;
+    PyObject *key = NULL, *item_list = NULL, *item = NULL, *cache;
     _buffer_info_t *info = NULL, *old_info = NULL;
 
-    if (_buffer_info_cache == NULL) {
-        _buffer_info_cache = PyDict_New();
-        if (_buffer_info_cache == NULL) {
-            return NULL;
-        }
+    cache = _buffer_init_cache();
+    if (cache == NULL) {
+        return NULL;
     }
 
     /* Compute information */
@@ -660,10 +684,15 @@ _buffer_get_info(PyObject *obj)
     if (key == NULL) {
         goto fail;
     }
-    item_list = PyDict_GetItem(_buffer_info_cache, key);
+
+#ifdef Py_NOGIL
+    item_list = PyDict_GetItemWithError2(cache, key);
+#else
+    item_list = PyDict_GetItemWithError(cache, key);
+    Py_XINCREF(item_list);
+#endif
 
     if (item_list != NULL) {
-        Py_INCREF(item_list);
         if (PyList_GET_SIZE(item_list) > 0) {
             item = PyList_GetItem(item_list, PyList_GET_SIZE(item_list) - 1);
             old_info = (_buffer_info_t*)PyLong_AsVoidPtr(item);
@@ -679,8 +708,13 @@ _buffer_get_info(PyObject *obj)
         if (item_list == NULL) {
             goto fail;
         }
-        if (PyDict_SetItem(_buffer_info_cache, key, item_list) != 0) {
+        PyObject *r = PyDict_SetDefault(cache, key, item_list);
+        if (r == NULL) {
             goto fail;
+        }
+        else if (r != item_list) {
+            Py_INCREF(r);
+            Py_SETREF(item_list, r);
         }
     }
 
@@ -720,7 +754,11 @@ _buffer_clear_info(PyObject *arr)
     }
 
     key = PyLong_FromVoidPtr((void*)arr);
-    item_list = PyDict_GetItem(_buffer_info_cache, key);
+#ifdef Py_NOGIL
+    item_list = PyDict_GetItemWithError2(_buffer_info_cache, key);
+#else
+    item_list = PyDict_GetItemWithError(_buffer_info_cache, key);
+#endif
     if (item_list != NULL) {
         for (k = 0; k < PyList_GET_SIZE(item_list); ++k) {
             item = PyList_GET_ITEM(item_list, k);
@@ -729,7 +767,9 @@ _buffer_clear_info(PyObject *arr)
         }
         PyDict_DelItem(_buffer_info_cache, key);
     }
-
+#ifdef Py_NOGIL
+    Py_XDECREF(item_list);
+#endif
     Py_DECREF(key);
 }
 
