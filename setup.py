@@ -451,6 +451,7 @@ def setup_package():
         entry_points={
             'console_scripts': f2py_cmds
         },
+        py_modules=[],
     )
 
     if "--force" in sys.argv:
