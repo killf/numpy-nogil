@@ -679,6 +679,7 @@ def configuration(parent_package='',top_path=None):
     # Intel and Clang also don't seem happy with /GL
     is_msvc = (platform.platform().startswith('Windows') and
                platform.python_compiler().startswith('MS'))
+    print(f"NUMPY CORE SETUP {is_msvc=} {platform.platform()=} {platform.python_compiler()=}")
     config.add_installed_library('npymath',
             sources=npymath_sources + [get_mathlib_info],
             install_dir='lib',
