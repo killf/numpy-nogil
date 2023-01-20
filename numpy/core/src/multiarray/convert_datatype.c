@@ -51,6 +51,8 @@ NPY_NO_EXPORT npy_intp REQUIRED_STR_LEN[] = {0, 3, 5, 10, 10, 20, 20, 20, 20};
 NPY_NO_EXPORT int npy_promotion_state = NPY_USE_LEGACY_PROMOTION;
 NPY_NO_EXPORT PyObject *NO_NEP50_WARNING_CTX = NULL;
 
+static Py_DECL_THREAD int npy_promotion_state_override;
+
 static PyObject *
 PyArray_GetGenericToVoidCastingImpl(void);
 
@@ -91,6 +93,22 @@ npy_give_promotion_warnings(void)
     return val == Py_False;
 }
 
+NPY_NO_EXPORT int
+npy_get_promotion_state(void)
+{
+    if (npy_promotion_state_override != 0) {
+        return npy_promotion_state_override;
+    }
+    return npy_promotion_state;
+}
+
+NPY_NO_EXPORT int
+npy_set_promotion_state_override(int state)
+{
+    int old = npy_promotion_state_override;
+    npy_promotion_state_override = state;
+    return old;
+}
 
 NPY_NO_EXPORT PyObject *
 npy__get_promotion_state(PyObject *NPY_UNUSED(mod), PyObject *NPY_UNUSED(arg)) {
@@ -925,7 +943,7 @@ PyArray_CanCastArrayTo(PyArrayObject *arr, PyArray_Descr *to,
         to = NULL;
     }
 
-    if (npy_promotion_state == NPY_USE_LEGACY_PROMOTION) {
+    if (npy_get_promotion_state() == NPY_USE_LEGACY_PROMOTION) {
         /*
          * If it's a scalar, check the value.  (This only currently matters for
          * numeric types and for `to == NULL` it can't be numeric.)
@@ -1949,10 +1967,10 @@ PyArray_CheckLegacyResultType(
         npy_intp ndtypes, PyArray_Descr **dtypes)
 {
     PyArray_Descr *ret = NULL;
-    if (npy_promotion_state == NPY_USE_WEAK_PROMOTION) {
+    if (npy_get_promotion_state() == NPY_USE_WEAK_PROMOTION) {
         return 0;
     }
-    if (npy_promotion_state == NPY_USE_WEAK_PROMOTION_AND_WARN
+    if (npy_get_promotion_state() == NPY_USE_WEAK_PROMOTION_AND_WARN
             && !npy_give_promotion_warnings()) {
         return 0;
     }
@@ -2049,12 +2067,12 @@ PyArray_CheckLegacyResultType(
         Py_DECREF(ret);
         return 0;
     }
-    if (npy_promotion_state == NPY_USE_LEGACY_PROMOTION) {
+    if (npy_get_promotion_state() == NPY_USE_LEGACY_PROMOTION) {
         Py_SETREF(*new_result, ret);
         return 0;
     }
 
-    assert(npy_promotion_state == NPY_USE_WEAK_PROMOTION_AND_WARN);
+    assert(npy_get_promotion_state() == NPY_USE_WEAK_PROMOTION_AND_WARN);
     if (PyErr_WarnFormat(PyExc_UserWarning, 1,
             "result dtype changed due to the removal of value-based "
             "promotion from NumPy. Changed from %S to %S.",

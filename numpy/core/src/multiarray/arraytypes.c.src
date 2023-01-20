@@ -276,8 +276,8 @@ static int
             ) {
         PyArray_Descr *descr = PyArray_DescrFromType(NPY_@TYPE@);
 
-        if (npy_promotion_state == NPY_USE_LEGACY_PROMOTION || (
-                    npy_promotion_state == NPY_USE_WEAK_PROMOTION_AND_WARN
+        if (npy_get_promotion_state() == NPY_USE_LEGACY_PROMOTION || (
+                    npy_get_promotion_state() == NPY_USE_WEAK_PROMOTION_AND_WARN
                         && !npy_give_promotion_warnings())) {
             /*
              * This path will be taken both for the "promotion" case such as

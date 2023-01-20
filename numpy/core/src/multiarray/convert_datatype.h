@@ -18,6 +18,12 @@ extern NPY_NO_EXPORT PyObject *NO_NEP50_WARNING_CTX;
 NPY_NO_EXPORT int
 npy_give_promotion_warnings(void);
 
+NPY_NO_EXPORT int
+npy_get_promotion_state(void);
+
+NPY_NO_EXPORT int
+npy_set_promotion_state_override(int state);
+
 NPY_NO_EXPORT PyObject *
 npy__get_promotion_state(PyObject *NPY_UNUSED(mod), PyObject *NPY_UNUSED(arg));
 
