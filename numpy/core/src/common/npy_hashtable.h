@@ -14,7 +14,7 @@ typedef struct {
     npy_intp size;  /* current size */
     npy_intp nelem;  /* number of elements */
 #ifdef PY_NOGIL
-    _PyMutex mutex;
+    pthread_rwlock_t rw_lock;
 #endif
 } PyArrayIdentityHash;
 

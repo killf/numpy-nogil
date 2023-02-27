@@ -30,10 +30,12 @@
 #endif
 
 #ifdef PY_NOGIL
-#define LOCK_TABLE(tb) _PyMutex_lock((_PyMutex*)&(tb)->mutex)
-#define UNLOCK_TABLE(tb) _PyMutex_unlock((_PyMutex*)&(tb)->mutex)
+#define LOCK_TABLE_READ(tb) pthread_rwlock_rdlock((pthread_rwlock_t*)&(tb)->rw_lock);
+#define LOCK_TABLE_WRITE(tb) pthread_rwlock_wrlock((pthread_rwlock_t*)&(tb)->rw_lock);
+#define UNLOCK_TABLE(tb) pthread_rwlock_unlock((pthread_rwlock_t*)&(tb)->rw_lock);
 #else
-#define LOCK_TABLE(tb)
+#define LOCK_TABLE_READ(tb)
+#define LOCK_TABLE_WRITE(tb)
 #define UNLOCK_TABLE(tb)
 #endif
 
@@ -109,7 +111,7 @@ PyArrayIdentityHash_New(int key_len)
     res->nelem = 0;
 
 #ifdef PY_NOGIL
-    memset(&res->mutex, 0, sizeof(res->mutex));
+    pthread_rwlock_init(&res->rw_lock, NULL);
 #endif
 
     res->buckets = PyMem_Calloc(4 * (key_len + 1), sizeof(PyObject *));
@@ -125,6 +127,9 @@ PyArrayIdentityHash_New(int key_len)
 NPY_NO_EXPORT void
 PyArrayIdentityHash_Dealloc(PyArrayIdentityHash *tb)
 {
+#ifdef PY_NOGIL
+    pthread_rwlock_destroy(&tb->rw_lock);
+#endif
     PyMem_Free(tb->buckets);
     PyMem_Free(tb);
 }
@@ -201,7 +206,7 @@ NPY_NO_EXPORT int
 PyArrayIdentityHash_SetItem(PyArrayIdentityHash *tb,
         PyObject *const *key, PyObject *value, int replace)
 {
-    LOCK_TABLE(tb);
+    LOCK_TABLE_WRITE(tb);
     if (value != NULL && _resize_if_necessary(tb) < 0) {
         /* Shrink, only if a new value is added. */
         UNLOCK_TABLE(tb);
@@ -233,7 +238,7 @@ PyArrayIdentityHash_SetItem(PyArrayIdentityHash *tb,
 NPY_NO_EXPORT PyObject *
 PyArrayIdentityHash_GetItem(PyArrayIdentityHash const *tb, PyObject *const *key)
 {
-    LOCK_TABLE(tb);
+    LOCK_TABLE_READ(tb);
     PyObject *res = find_item(tb, key)[0];
     UNLOCK_TABLE(tb);
     return res;
